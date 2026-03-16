@@ -1,0 +1,43 @@
+{
+  "name": "myapartment-backend",
+  "version": "1.0.0",
+  "description": "Backend API for MyApartment property management system",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js",
+    "drop-db": "node scripts/dropDB.js",
+    "drop-but-admin": "node scripts/dropButAdmin.js",
+    "create-admin": "node scripts/createAdmin.js",
+    "check-admin": "node scripts/checkAdmin.js",
+    "seed": "node scripts/seed.js",
+    "backup": "node scripts/backupDB.js"
+  },
+  "dependencies": {
+    "axios": "^1.5.0",
+    "bcryptjs": "^2.4.3",
+    "cloudinary": "^2.9.0",
+    "colors": "^1.4.0",
+    "compression": "^1.8.1",
+    "cookie-parser": "^1.4.6",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "express-mongo-sanitize": "^2.2.0",
+    "express-rate-limit": "^8.3.1",
+    "express-validator": "^7.0.1",
+    "helmet": "^8.1.0",
+    "hpp": "^0.2.3",
+    "jsonwebtoken": "^9.0.3",
+    "mongoose": "^7.5.0",
+    "morgan": "^1.10.0",
+    "multer": "^1.4.5-lts.1",
+    "nodemailer": "^6.9.5",
+    "winston": "^3.10.0",
+    "xss-clean": "^0.1.4"
+  },
+  "devDependencies": {
+    "@faker-js/faker": "^8.0.2",
+    "nodemon": "^3.0.1"
+  }
+}
