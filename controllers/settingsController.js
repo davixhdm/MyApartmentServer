@@ -1,6 +1,16 @@
 const Settings = require('../models/Settings');
 const ErrorResponse = require('../utils/errorResponse');
 
+// List of keys that should be public (visible on landing page)
+const PUBLIC_KEYS = [
+  'companyName',
+  'paymentDueDay',
+  'contactEmail',
+  'contactPhone',
+  'address',
+  'website'
+];
+
 // @desc    Get public settings (for landing page)
 // @route   GET /api/settings/public
 // @access  Public
@@ -75,6 +85,9 @@ exports.upsertSetting = async (req, res, next) => {
       }
     }
 
+    // Determine if this key should be public by default
+    const shouldBePublic = PUBLIC_KEYS.includes(req.params.key) || isPublic;
+
     const setting = await Settings.findOneAndUpdate(
       { key: req.params.key },
       {
@@ -83,7 +96,7 @@ exports.upsertSetting = async (req, res, next) => {
         type: type || typeof parsedValue,
         description: description || '',
         group: group || 'general',
-        public: isPublic || false,
+        public: shouldBePublic,
         updatedBy: req.user.id
       },
       { upsert: true, new: true, runValidators: true }
@@ -124,6 +137,18 @@ exports.updateSettings = async (req, res, next) => {
           }
         }
 
+        // Prepare update data
+        const updateData = {
+          value: parsedValue,
+          type,
+          updatedBy: req.user.id
+        };
+
+        // Auto-set public for known public keys
+        if (PUBLIC_KEYS.includes(key)) {
+          updateData.public = true;
+        }
+
         // Check if setting exists
         const existing = await Settings.findOne({ key });
         
@@ -132,21 +157,15 @@ exports.updateSettings = async (req, res, next) => {
           // Update existing
           setting = await Settings.findOneAndUpdate(
             { key },
-            {
-              value: parsedValue,
-              type,
-              updatedBy: req.user.id
-            },
+            updateData,
             { new: true }
           );
         } else {
           // Create new
           setting = await Settings.create({
             key,
-            value: parsedValue,
-            type,
-            updatedBy: req.user.id,
-            public: false // Default to private for new settings
+            ...updateData,
+            public: PUBLIC_KEYS.includes(key) ? true : false
           });
         }
         
@@ -237,14 +256,6 @@ exports.initDefaultSettings = async (req, res, next) => {
         group: 'company',
         public: true,
         description: 'Company website URL'
-      },
-      {
-        key: 'systemStartTime',
-        value: new Date().toISOString(),
-        type: 'date',
-        group: 'system',
-        public: false,
-        description: 'System initialization timestamp'
       }
     ];
 

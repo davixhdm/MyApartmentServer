@@ -1,6 +1,7 @@
 const User = require('../models/User');
 const Property = require('../models/Property');
 const ErrorResponse = require('../utils/errorResponse');
+const bcrypt = require('bcryptjs');
 
 // @desc    Get all users
 // @route   GET /api/users
@@ -8,11 +9,26 @@ const ErrorResponse = require('../utils/errorResponse');
 exports.getUsers = async (req, res, next) => {
   try {
     const users = await User.find().select('-password');
-
     res.status(200).json({
       success: true,
       count: users.length,
       data: users
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// @desc    Get staff users (admin & landlord)
+// @route   GET /api/users/staff
+// @access  Private (Admin only)
+exports.getStaffUsers = async (req, res, next) => {
+  try {
+    const staff = await User.find({ role: { $in: ['admin', 'landlord'] } }).select('-password');
+    res.status(200).json({
+      success: true,
+      count: staff.length,
+      data: staff
     });
   } catch (err) {
     next(err);
@@ -44,7 +60,26 @@ exports.getUser = async (req, res, next) => {
 // @access  Private (Admin)
 exports.createUser = async (req, res, next) => {
   try {
-    const user = await User.create(req.body);
+    const { name, email, password, role, phone } = req.body;
+
+    // Check if user exists
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return next(new ErrorResponse('Email already registered', 400));
+    }
+
+    // Hash password
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+
+    const user = await User.create({
+      name,
+      email,
+      password: hashedPassword,
+      role: role || 'tenant',
+      phone,
+      isActive: true
+    });
 
     res.status(201).json({
       success: true,
@@ -60,14 +95,22 @@ exports.createUser = async (req, res, next) => {
 // @access  Private (Admin)
 exports.updateUser = async (req, res, next) => {
   try {
-    const user = await User.findByIdAndUpdate(req.params.id, req.body, {
-      new: true,
-      runValidators: true
-    }).select('-password');
+    let user = await User.findById(req.params.id);
 
     if (!user) {
       return next(new ErrorResponse(`User not found with id of ${req.params.id}`, 404));
     }
+
+    // If password is being updated, hash it
+    if (req.body.password) {
+      const salt = await bcrypt.genSalt(10);
+      req.body.password = await bcrypt.hash(req.body.password, salt);
+    }
+
+    user = await User.findByIdAndUpdate(req.params.id, req.body, {
+      new: true,
+      runValidators: true
+    }).select('-password');
 
     res.status(200).json({
       success: true,
@@ -102,7 +145,7 @@ exports.deleteUser = async (req, res, next) => {
       );
     }
 
-    await user.remove();
+    await user.deleteOne();
 
     res.status(200).json({
       success: true,
@@ -119,7 +162,6 @@ exports.deleteUser = async (req, res, next) => {
 exports.getTenants = async (req, res, next) => {
   try {
     const tenants = await User.find({ role: 'tenant' }).select('-password');
-
     res.status(200).json({
       success: true,
       count: tenants.length,
@@ -136,7 +178,6 @@ exports.getTenants = async (req, res, next) => {
 exports.getLandlords = async (req, res, next) => {
   try {
     const landlords = await User.find({ role: 'landlord' }).select('-password');
-
     res.status(200).json({
       success: true,
       count: landlords.length,
